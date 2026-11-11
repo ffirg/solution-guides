@@ -31,6 +31,12 @@ Solution guides for AI-driven automation with Ansible Automation Platform.
 | Automated vulnerability remediation with Lightwell and Ansible | [README-AAP-LightWell-AO.md](README-AAP-LightWell-AO.md) | |
 | Automated brute-force remediation with Event-Driven Ansible | [README-BruteForce-AAP.md](README-BruteForce-AAP.md) | |
 
+## Implementation Guides
+
+| Implementation Guide | Guide | Knowledge Base |
+|----------------------|-------|----------------|
+| Agentic Automation Development Lifecycle | [README-Agentic-Automation-Development-Lifecycle.md](README-Agentic-Automation-Development-Lifecycle.md) | |
+
 ## Contributing
 
 | Resource | Description |
