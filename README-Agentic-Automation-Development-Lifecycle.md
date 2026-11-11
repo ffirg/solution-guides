@@ -307,7 +307,7 @@ Minimum review checklist:
 
 ## Future Investigation: APME/X2A Overlay
 
-APME/X2A is intentionally outside this first guide draft. Future work can map APME/X2A capabilities onto lifecycle stages such as discovery, transformation, evaluation, publication, and operation. That overlay should extend this lifecycle rather than create a second trust model.
+APME/X2A is intentionally outside this first guide draft. A companion [APME and X2A lifecycle overlay](plans/apme-x2a-lifecycle-overlay.md) maps current conceptual fit onto discovery, transformation, evaluation, publication, and operation. Future work should extend this lifecycle rather than create a second trust model.
 
 ## Next Steps
 
