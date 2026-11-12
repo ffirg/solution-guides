@@ -450,6 +450,83 @@ This is controlled release verification, not exploratory testing in production.
 - Revoke or rotate agent identities through normal credential-management process.
 - Keep exception records visible through release and operation.
 
+## Optional Automation orchestrator Track
+
+Automation orchestrator is an optional orchestration layer for workflows that combine agent reasoning, human approval, external systems, and Ansible Automation Platform execution. It is not required for deterministic AAP automation, CI validation, APME policy checks, or X2A content transformation.
+
+```text
+X2A = transform
+APME = verify and gate
+AAP = execute
+Automation orchestrator = coordinate agent, approval, cross-system, and AAP steps
+```
+
+### Lifecycle placement
+
+```text
+Intent
+  -> X2A transformation or human authoring
+  -> APME and CI validation
+  -> tests and promotion
+  -> Automation orchestrator, where applicable
+       -> trigger
+       -> analyze or classify
+       -> call external systems
+       -> request approval
+       -> launch AAP job or workflow
+       -> inspect output
+       -> notify, retry, rollback, or escalate
+  -> AAP governed execution
+```
+
+Keep Git and CI as source of truth for content and release promotion. Use Automation orchestrator to coordinate approved automation, not to bypass content trust gates or generate arbitrary playbooks at runtime.
+
+### Selective implementation hooks
+
+| Implementation need | Default path | Optional Automation orchestrator hook |
+|---|---|---|
+| Deterministic playbook run | AAP job template | None |
+| Fixed multi-job sequence | AAP workflow template | Use when external systems participate |
+| Unstructured alert analysis | EDA plus fixed routing | Task Agent step |
+| Dynamic approved-template selection | AAP and MCP pattern | Task Agent plus AAP execution step |
+| Human approval with external context | AAP approval | Automation orchestrator Approval step |
+| Cross-system action | EDA or AAP integration | REST, script, or action step |
+| Multi-environment rollout | CI/CD plus AAP | Orchestrator workflow with explicit gates |
+| Migration factory | CI or bespoke workflow | Optional X2A plus APME coordinator |
+
+Use it when workflow complexity, cross-system context, and human decision value exceed cost of another platform component.
+
+### Recommended guardrails
+
+- Select specific task-agent tools; do not enable all tools by default.
+- Bind agent output to an allowlisted AAP job template or workflow.
+- Validate dynamic `extra_vars` and target values.
+- Limit inventory, credentials, and execution environment scope.
+- Require approval for production or destructive actions.
+- Define rejection, timeout, retry, cancellation, and escalation paths.
+- Use structured agent response schemas.
+- Preserve workflow version, run ID, approval identity, AAP sync, and job evidence.
+
+AAP remains execution authority. Automation orchestrator does not replace AAP RBAC, credentials, APME policy, Git review, or runtime testing.
+
+### Infrastructure decision
+
+Automation orchestrator requires OpenShift and adds its own operational footprint, including operator lifecycle, PostgreSQL dependencies, authentication integration, observability, backups, and optional LLM or object-storage integrations. Treat OpenShift and support cost as part of adoption decision.
+
+### Fit matrix
+
+| Area | Fit |
+|---|---|
+| Agentic operational workflows | High |
+| Human-in-the-loop execution | High |
+| Cross-system orchestration | High |
+| Dynamic selection of approved AAP automation | High |
+| APME coordination | Medium-high |
+| X2A migration factory | Medium |
+| Generic automation development | Low-medium |
+| Deterministic AAP job execution | Low |
+| Required platform component | No |
+
 ## Future Investigation: APME/X2A Overlay
 
 APME/X2A is intentionally outside this first guide draft. A companion [APME and X2A lifecycle overlay](plans/apme-x2a-lifecycle-overlay.md) maps current conceptual fit onto discovery, transformation, evaluation, publication, and operation. Future work should extend this lifecycle rather than create a second trust model.

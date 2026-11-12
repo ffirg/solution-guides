@@ -114,6 +114,55 @@ APME is a **verification and policy gate**.
 
 AAP is the **trusted execution layer**.
 
+## Optional Automation orchestrator layer
+
+Automation orchestrator fits as an optional workflow coordinator around the three primary roles:
+
+```text
+X2A = transform
+APME = verify and gate
+AAP = execute
+Automation orchestrator = coordinate agent, approval, cross-system, and AAP steps
+```
+
+Recommended path:
+
+```text
+X2A transformation
+  → APME and CI validation
+  → tests and Git promotion
+  → Automation orchestrator, where applicable
+      → task agent or external action
+      → approval
+      → AAP job or workflow execution
+      → result handling and escalation
+```
+
+Automation orchestrator should coordinate approved automation. It should not bypass Git, APME, runtime tests, or AAP authorization, and should not become a runtime playbook generator.
+
+| Need | Default | Optional Automation orchestrator hook |
+|---|---|---|
+| Deterministic playbook | AAP job template | None |
+| Fixed AAP pipeline | AAP workflow template | Cross-system steps where needed |
+| Unstructured operational input | EDA and fixed routing | Task Agent step |
+| Dynamic approved-template selection | AAP and MCP pattern | Task Agent plus AAP execution |
+| External-context approval | AAP approval | Approval step |
+| Cross-system response | EDA or AAP integration | REST, script, or action step |
+| X2A plus APME migration factory | CI or bespoke workflow | Optional orchestration shell |
+
+Use it only where agent reasoning, human decision, cross-system context, or multi-environment coordination justify additional platform cost.
+
+Guardrails:
+
+- Selected task-agent tools, not all tools by default.
+- Allowlisted AAP job templates and workflows.
+- Validated dynamic `extra_vars` and target values.
+- Explicit inventory, credential, and execution-environment boundaries.
+- Approval for production or destructive actions.
+- Rejection, timeout, retry, cancellation, and escalation paths.
+- Structured agent response schemas.
+- Workflow version, run ID, approval identity, AAP sync, and job evidence in release record.
+
 ## Golden-path repository
 
 Recommended implementation unit: forkable use-case repository containing:
