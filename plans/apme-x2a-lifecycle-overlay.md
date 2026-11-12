@@ -20,6 +20,22 @@ APME proves content quality and policy posture.
 AAP runs promoted automation under governance.
 ```
 
+## Two supply chains
+
+The overlay must cover both automation content and AAP resources:
+
+| Supply chain | Assets | Gate outcome |
+|---|---|---|
+| Content | Playbooks, roles, collections, rulebooks, filters, execution environments, decision environments | Reviewed and tested automation content |
+| Platform resources | Organizations, credentials, projects, inventories, job templates, workflows, activations | Validated and approved AAP configuration |
+
+```text
+Content: source → test → review → promote → execute
+Resources: config-as-code → validate → review → apply → verify
+```
+
+Unmanaged AAP resource drift can undermine trusted content. Both chains need ownership, versioning, policy, promotion, and post-change verification.
+
 Do not treat X2A output as trusted merely because X2A validated it. Do not treat an APME-clean scan as proof that automation will achieve its intended runtime outcome.
 
 ## Overlay on lifecycle
@@ -98,6 +114,32 @@ APME is a **verification and policy gate**.
 
 AAP is the **trusted execution layer**.
 
+## Golden-path repository
+
+Recommended implementation unit: forkable use-case repository containing:
+
+- Standard layout.
+- Reusable CI workflows and required checks.
+- CODEOWNERS and ownership metadata.
+- AAP configuration-as-code entry point.
+- Execution and decision environment definitions.
+- Tests, fixtures, documentation, and runbooks.
+- Release and promotion metadata.
+
+This gives lifecycle guidance executable shape. Teams can start with YAML validation, ansible-lint, Markdown linting, link checking, Gitleaks, and pre-commit parity, then add APME, integration tests, dependency checks, AI review, and compliance controls.
+
+## Trust tiers
+
+| Content tier | Lifecycle treatment |
+|---|---|
+| Certified | Trust implementation support; test organization inputs, composition, compatibility, and outcome |
+| Validated | Trust as expert-led starting point; test customization, composition, and operational fit |
+| Community | Vet source, maintenance, dependencies, vulnerabilities, and behavior before promotion |
+| Agent-generated | Untrusted proposal; require checks, policy, tests, provenance, review, and promotion |
+| Internal custom | Full internal SDLC and outcome ownership |
+
+X2A output belongs in the agent-generated or migration-candidate tier until promoted. APME findings provide evidence; they do not transfer functional ownership.
+
 ## Maturity overlay
 
 | Maturity | X2A | APME | AAP |
@@ -118,6 +160,51 @@ Run means controlled migration at scale, not blind autonomous conversion.
 | Can X2A publish directly to AAP? | Capability exists in public X2A material, but direct publish should remain downstream of lifecycle gates. |
 | Does this replace human review? | No. Human review remains required for scope, risk, permissions, evidence, and promotion. |
 | Is product support proven by this overlay? | No. This note maps conceptual fit. Version-specific support requires controlled validation. |
+
+## Interface and risk-based testing
+
+X2A conversion should be tested against organization-owned interfaces and outcomes:
+
+- Required parameters and accepted values.
+- Preconditions and input assertions.
+- Composition and task ordering.
+- Expected outputs, `set_facts`, and `set_stats` data.
+- Postconditions, error recovery, and idempotency.
+
+Test depth should follow blast radius, statefulness, external dependencies, credential sensitivity, rollback difficulty, and production criticality. Molecule is useful for bounded roles, but should not be universal requirement.
+
+| Risk | Validation example |
+|---|---|
+| Low | Lint, syntax, unit checks, mock target |
+| Moderate | Molecule, ephemeral target, idempotency |
+| High | Persistent UAT and representative integration environment |
+| Critical | Production analogue, rollback rehearsal, operational sign-off |
+
+## Promotion gates and ownership
+
+| Gate | Evidence | Approval |
+|---|---|---|
+| UAT entry | CI, integration results, peer review | Peer reviewer and code owner |
+| Production entry | UAT, operational readiness, capacity, scale, licensing, dependencies, exceptions | Use-case CODEOWNER plus AAP SME or administrator |
+
+Failed checks normally block promotion. Exceptions need failed check, risk, justification, mitigation, approver, affected release, and review date.
+
+Platform team owns AAP health, upgrades, security, shared capacity, platform policy, and promotion mechanisms. Use-case CODEOWNER owns automation behavior, target risk, functional outcome, dependencies, UAT evidence, and effects on target systems.
+
+## Agent-specific provenance
+
+Join one immutable record across:
+
+```text
+Source commit
+  → X2A version, model, agent, migration plans, and conversion diff
+  → APME version, rules, findings, and remediation diff
+  → lint, test, staging, and approval evidence
+  → promoted Git commit and execution-environment digest
+  → AAP resource apply, project sync, and job execution
+```
+
+Also record tool calls, retrieved sources, context boundaries, human edits, model/provider changes, and material evaluation results.
 
 ## Required provenance chain
 
@@ -145,6 +232,8 @@ Without this chain, team cannot reliably answer what source became what automati
 5. APME-clean means no known findings under configured rules, not runtime success.
 6. Direct X2A-to-AAP publish must not bypass Git review, policy, provenance, and runtime testing.
 7. AAP credentials, inventory, and job permissions remain least-privilege and explicit.
+8. Agent tools use explicit allowlists, retry budgets, target boundaries, and human handoff.
+9. Production verification confirms target scope, credentials, execution plane, evidence, and functional outcome.
 
 ## Recommended guide wording
 
@@ -165,7 +254,8 @@ Use:
 3. Add APME scan and remediation evidence.
 4. Add Molecule or staging evidence showing runtime boundary.
 5. Add AAP promotion and execution evidence.
-6. Convert this overlay into a guide architecture diagram and companion Solution Guide pattern.
+6. Add production incident routing and exception-ledger examples.
+7. Convert this overlay into a guide architecture diagram and companion Solution Guide pattern.
 
 ## Evidence status
 

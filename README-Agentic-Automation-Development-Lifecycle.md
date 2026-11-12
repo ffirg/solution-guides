@@ -30,6 +30,25 @@ The core principle is:
 
 > Agents can accelerate automation development. Trusted supply chains determine what can be promoted and executed.
 
+## Two Supply Chains
+
+Trusted delivery covers two related asset classes:
+
+1. **Automation content:** playbooks, roles, collections, rulebooks, filters, execution environments, decision environments, and related executable code.
+2. **Automation resources:** AAP organizations, credentials, projects, inventories, job templates, workflow templates, rulebook activations, and other platform objects.
+
+Both need source control, validation, review, promotion, and post-apply verification.
+
+```text
+Content supply chain
+source → test → review → promote → execute
+
+Platform-resource supply chain
+config-as-code → validate → review → apply → verify
+```
+
+Treating content as trusted while allowing unmanaged AAP resource drift leaves a material control gap.
+
 ## Architecture
 
 ```mermaid
@@ -66,6 +85,37 @@ graph LR
 - Documented AAP RBAC, credential, inventory, execution environment, and workflow boundaries.
 
 **Operational Impact:** Medium. Lifecycle controls add review and evidence work, but reduce risk from unreviewed generated content and uncontrolled agent access.
+
+## Golden-Path Repository
+
+Organizations should provide a forkable use-case repository template containing:
+
+- Standard repository layout.
+- Reusable CI workflows and required checks.
+- Pull-request and issue templates.
+- CODEOWNERS and ownership metadata.
+- AAP configuration-as-code entry point.
+- Execution and decision environment definitions.
+- Test fixtures and integration-test structure.
+- Documentation and runbook expectations.
+- Release and promotion metadata.
+
+Each use-case repository should remain self-contained: automation content, AAP resource configuration, tests, CI, documentation, ownership, and environment definitions travel together.
+
+### Minimum CI baseline
+
+Start with checks that teams can adopt immediately:
+
+```text
+YAML validation
+ansible-lint
+Markdown linting
+Link checking
+Gitleaks
+Pre-commit parity with CI
+```
+
+Use modular workflows so teams can add integration tests, dependency checks, repository policy, AI-assisted review, APME, and compliance checks without replacing baseline controls.
 
 ## Implementation Walkthrough
 
@@ -118,6 +168,9 @@ Capture agent and model metadata where available:
 - Generated files.
 - Human edits after generation.
 - Dependency versions.
+- Tool calls and side effects requested.
+- Retrieved sources and context boundaries.
+- Review and approval references.
 
 Generated content remains untrusted until it passes verification and review.
 
@@ -130,6 +183,8 @@ ansible-lint .
 ansible-playbook --syntax-check site.yml
 ```
 
+Run these checks in local pre-commit and GitHub CI. CI should produce actionable findings with file, severity, impact, remediation, and governing standard.
+
 Add checks appropriate to content:
 
 - YAML and schema validation.
@@ -140,6 +195,8 @@ Add checks appropriate to content:
 - Variable and privilege analysis.
 - Policy-as-code checks.
 - Dangerous-module and destructive-action detection.
+
+Use APME when available as an additional generated-content gate for compatibility, modernization, policy, secrets, dependency, and remediation findings. APME complements ansible-lint; it does not replace runtime testing.
 
 Agent may explain failures and propose fixes. Agent cannot waive failed checks.
 
@@ -158,6 +215,29 @@ Use Molecule, ephemeral VMs, containers, OpenShift namespaces, mock APIs, or syn
 - Network or dependency unavailability.
 
 Agent-generated tests improve coverage, but cannot be sole evidence of correctness. Human-authored or independently reviewed scenarios must cover material risks.
+
+### Interface-first testing
+
+Test the automation interface and composition owned by the organization:
+
+- Required parameters and accepted values.
+- Preconditions and input assertions.
+- Order and interaction of composed tasks.
+- Expected outputs, `set_facts`, and `set_stats` data.
+- Postconditions and functional outcome.
+- Error handling and recovery.
+- Idempotency.
+
+Do not duplicate upstream tests for trusted module internals unless a defect, compatibility risk, or unsupported usage pattern makes that necessary.
+
+Molecule is useful for appropriate roles and bounded scenarios, but should not be mandatory for every use case. Select test depth by blast radius, statefulness, external dependencies, credential sensitivity, rollback difficulty, and production criticality.
+
+| Risk | Suitable validation |
+|---|---|
+| Low | Lint, syntax, unit checks, mock target |
+| Moderate | Molecule, ephemeral target, idempotency |
+| High | Persistent UAT and representative integration environment |
+| Critical | Production analogue, controlled rollout, rollback rehearsal, operational sign-off |
 
 ### Step 6: Evaluate agent behavior
 
@@ -191,6 +271,15 @@ Reviewer verifies:
 
 Require stronger review for identity changes, network changes, secret operations, destructive actions, cross-tenant access, and autonomous execution.
 
+Use two explicit promotion gates:
+
+| Gate | Required evidence | Approval |
+|---|---|---|
+| Entry into UAT | Required CI checks, integration results, and peer review | Peer reviewer and applicable code owner |
+| Entry into production | UAT evidence, use-case approval, operational readiness, capacity and scale review, licensing impact, platform dependencies, and exceptions | Use-case CODEOWNER plus AAP SME or administrator |
+
+Failed CI normally blocks promotion. Exceptions require visible record of failed check, risk, justification, mitigation, approver, affected release, and review or expiry date.
+
 ### Step 8: Package and promote
 
 Promotion record should include:
@@ -206,6 +295,8 @@ Promotion record should include:
 - Release notes.
 - Known limitations and support boundary.
 
+Preserve one immutable release identity across Git commit, automation-content version, execution-environment digest, AAP-resource version, policy result, test evidence, project sync, and job execution.
+
 Git remains source of truth. AAP becomes governed execution and orchestration layer after promotion. Agent remains bounded by the permissions and interfaces granted to it.
 
 ### Step 9: Execute through AAP controls
@@ -213,6 +304,8 @@ Git remains source of truth. AAP becomes governed execution and orchestration la
 Configure AAP project sync, execution environments, credentials, inventories, job templates, surveys, workflows, approvals, and audit logging according to organizational policy.
 
 Do not treat runtime agent access as equivalent to unrestricted platform access. Use least-privilege identities, explicit tool allowlists, inventory limits, approval gates, input validation, rate limits, and execution timeouts.
+
+Manage AAP resources as configuration-as-code where practical. Validate resource changes before apply, separate environment-specific values, keep credentials as secret references, detect drift, and verify applied organizations, inventories, projects, templates, workflows, and activations after promotion.
 
 ### Step 10: Operate, learn, and retire
 
@@ -259,13 +352,50 @@ Recommended message:
 
 Do not claim that model identity, human review alone, or agent use of a trusted platform makes generated content trusted by default. Trust comes from controls around agent behavior and resulting artifacts.
 
+## Content Trust Tiers
+
+Use upstream trust as evidence, not as automatic trust transfer:
+
+| Content tier | Trust posture | Organization responsibility |
+|---|---|---|
+| Certified | Supported content from Red Hat or certified partner | Test inputs, composition, compatibility, and outcome |
+| Validated | Expert-led content intended as trusted starting point | Test customization, composition, operational fit, and outcome |
+| Community | No automatic enterprise trust designation | Vet source, maintenance, dependencies, vulnerabilities, and behavior |
+| Agent-generated | Untrusted proposal | Require deterministic checks, policy, tests, provenance, review, and promotion |
+| Internal custom | Organization-owned implementation and outcome | Apply complete internal lifecycle and ownership model |
+
+Agent-generated content becomes internally trusted only after passing the same promotion controls as hand-authored content.
+
+## Ownership and Incident Boundaries
+
+### AAP platform team
+
+- Install, operate, upgrade, and secure AAP.
+- Provide repository templates and platform patterns.
+- Maintain shared execution infrastructure and capacity.
+- Review production workload readiness from platform perspective.
+- Operate platform-level policy, RBAC, and promotion mechanisms.
+
+### Use-case CODEOWNER
+
+- Own playbooks, roles, rulebooks, filters, and use-case configuration.
+- Define intended outcome, preconditions, postconditions, and target risk.
+- Test changes on systems they own.
+- Define runtime dependencies and blast radius.
+- Provide UAT evidence and approve functional readiness.
+- Accept accountability for automation effects.
+
+Platform governance does not transfer functional or target-system accountability from use-case CODEOWNER to AAP team.
+
+Incident routing should distinguish platform failure, automation behavior failure, target-system side effect, and policy or promotion failure.
+
 ## Maturity Path
 
 | Stage | Agent role | Runtime behavior | Required controls |
 |---|---|---|---|
-| Crawl | Explain, search, draft, and generate tests | Human runs approved job | Git review, lint, tests, least privilege |
-| Walk | Generate bounded changes and recommendations | Agent recommends; human approves execution | Agent evaluations, policy gates, provenance |
-| Run | Coordinate multi-step development and operations | Autonomous execution only inside explicit policy envelope | Continuous evaluation, scoped tools, approvals, rollback, monitoring |
+| Crawl | Explain, search, draft, and generate tests | Human runs approved job | Pre-commit, lint, syntax, secrets, Git review |
+| Walk | Generate bounded changes and recommendations | Agent recommends; human approves execution | Reusable CI, APME, integration tests, CODEOWNERS, UAT, provenance |
+| Run | Coordinate repeatable development and migration factory | Autonomous execution only inside explicit policy envelope | Config-as-code, continuous evaluation, scoped tools, approvals, rollback, monitoring, production verification |
 
 Run should mean bounded autonomy, not unrestricted autonomy.
 
@@ -296,6 +426,18 @@ Minimum review checklist:
 | Review cannot reconstruct output | Missing prompt, model, source, or edit provenance | Capture generation metadata and immutable review artifact |
 | Runtime action exceeds intended scope | Excessive credential or inventory permissions | Reduce RBAC, credential, inventory, and tool scope |
 
+### Production verification
+
+After release, verify that production workload:
+
+- Reaches intended endpoints.
+- Uses expected inventories, credentials, and execution plane.
+- Completes without unexpected errors.
+- Produces required evidence and output.
+- Meets functional objective.
+
+This is controlled release verification, not exploratory testing in production.
+
 ## Day-2 Operations
 
 - Revalidate content after AAP, collection, partner API, model, or agent-client changes.
@@ -304,6 +446,9 @@ Minimum review checklist:
 - Keep development, test, and production AAP boundaries separate.
 - Maintain owner, dependency, evaluation, and rollback records.
 - Retire content that no longer has current evidence or accountable ownership.
+- Monitor agent tool calls, policy denials, repeated retries, human overrides, model or provider changes, and unexplained behavior variance.
+- Revoke or rotate agent identities through normal credential-management process.
+- Keep exception records visible through release and operation.
 
 ## Future Investigation: APME/X2A Overlay
 
@@ -311,7 +456,10 @@ APME/X2A is intentionally outside this first guide draft. A companion [APME and 
 
 ## Next Steps
 
-- Review this framework with automation platform, security, developer-experience, and field teams.
+- Review this framework with automation platform, security, developer-experience, field, and use-case owner teams.
 - Select one low-risk automation scenario for controlled validation.
-- Add tested commands, screenshots, and version-specific evidence after lab execution.
+- Create a golden-path use-case repository with reusable CI, tests, ownership, and AAP configuration-as-code.
+- Add tested commands, screenshots, promotion evidence, and version-specific limits after lab execution.
+- Validate APME as CI policy gate and X2A as transformation-stage input.
+- Define production incident ownership and escalation paths.
 - Create partner Solution Guides that reference this lifecycle and document integration-specific outcomes.
